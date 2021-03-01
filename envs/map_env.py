@@ -3,7 +3,7 @@ Base map class that defines the rendering process
 """
 
 import random
-
+import gym
 import matplotlib.pyplot as plt
 import numpy as np
 # from ray.rllib.env import MultiAgentEnv
@@ -58,7 +58,7 @@ DEFAULT_COLOURS = {' ': [0, 0, 0],  # Black background
 
 
 # class MapEnv(MultiAgentEnv):
-class MapEnv(object):
+class MapEnv(gym.Env):
     def __init__(self, ascii_map, num_agents=1, render=True, color_map=None):
         """
 
