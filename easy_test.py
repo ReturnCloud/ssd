@@ -3,9 +3,7 @@ import gym
 from envs.cleanup import CleanupEnv
 from envs.cleanup import CleanupAgent
 
-# self, agent_id, start_pos, start_orientation, grid, row_size, col_size
-
-# env = CleanupEnv()
+# only for 1 agent in env
 class Sarsa(object):
 
     def __init__(self, env):
@@ -15,7 +13,8 @@ class Sarsa(object):
         self.state = None
 
     def _get_state_name(self, state):
-        return str(state)
+        smap = state['agent-0']
+        return (smap.mean(), smap.std())
 
     def _is_state_in_Q(self, s):
         return self.Q.get(s) is not None
@@ -33,12 +32,14 @@ class Sarsa(object):
             self._init_state_value(s, randomized)
 
     def _get_Q(self, s, a):
+        real_a = a[0]
         self._assert_state_in_Q(s, randomized=True)
-        return self.Q[s][a]
+        return self.Q[s][real_a]
 
     def _set_Q(self, s, a, value):
+        real_a = a[0]
         self._assert_state_in_Q(s, randomized=True)
-        self.Q[s][a] = value
+        self.Q[s][real_a] = value
 
     def _initAgent(self):
         self.state = self.env.reset()
@@ -56,7 +57,7 @@ class Sarsa(object):
         else:
             str_act = max(Q_s, key=Q_s.get)
             action = int(str_act)
-        return action
+        return {0: action}
 
     def act(self, a):
         return self.env.step(a)
@@ -68,7 +69,7 @@ class Sarsa(object):
 
         while num_episode < max_episode_num:
             self.state = self.env.reset()
-            s0 = self._get_state_name(self.state)
+            s0 = self._get_state_id(self.state)
             # self.env.render()
             a0 = self.performPolicy(s0, num_episode, use_epsilon=True)
 
@@ -77,7 +78,7 @@ class Sarsa(object):
             while not is_done:
                 # a0 = self.performPolicy(s0, num_episode)
                 s1, r1, is_done, info = self.act(a0)
-                self.env.render()
+                # self.env.render()
                 s1 = self._get_state_name(s1)
                 self._assert_state_in_Q(s1, randomized=True)
                 # use_epsilon = False --> Q-learning
