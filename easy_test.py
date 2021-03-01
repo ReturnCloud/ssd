@@ -5,7 +5,6 @@ from envs.cleanup import CleanupAgent
 
 # self, agent_id, start_pos, start_orientation, grid, row_size, col_size
 
-print ('clean up registered')
 # env = CleanupEnv()
 class Sarsa(object):
 
@@ -107,6 +106,8 @@ class Sarsa(object):
 env = 'cleanup-v0'
 gym.register(env, entry_point=CleanupEnv)
 env = gym.make(env)
+print ('clean up registered')
+
 algo = Sarsa(env)
 env.reset()
 print("Learning...")
