@@ -62,7 +62,7 @@ class CleanupEnv(MapEnv):
     @property
     def action_space(self):
         agents = list(self.agents.values())
-        ac_space = [ag.action_space for agent in agents]
+        ac_space = [ag.action_space for ag in agents]
         return ac_space
 
     @property

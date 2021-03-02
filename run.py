@@ -261,3 +261,6 @@ def main():
                         },
                         str(save_dir) + "/agent%i_model" % i + ".pt")
 '''
+
+if __name__ == '__main__':
+    main()
