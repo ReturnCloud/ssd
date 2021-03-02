@@ -3,8 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.distributions import Bernoulli, Categorical, DiagGaussian
-from utils.util import init
+from algo.algo_utils import Bernoulli, Categorical, DiagGaussian, init
 
 
 class Flatten(nn.Module):
