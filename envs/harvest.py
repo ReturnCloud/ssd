@@ -25,12 +25,14 @@ class HarvestEnv(MapEnv):
     @property
     def action_space(self):
         agents = list(self.agents.values())
-        return agents[0].action_space
+        ac_space = [ag.action_space for agent in agents]
+        return ac_space
 
     @property
     def observation_space(self):
         agents = list(self.agents.values())
-        return agents[0].observation_space
+        ob_space = [agent.observation_space for ag in agents]
+        return ob_space
 
     def setup_agents(self):
         map_with_agents = self.get_map_with_agents()

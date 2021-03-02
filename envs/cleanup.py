@@ -62,13 +62,14 @@ class CleanupEnv(MapEnv):
     @property
     def action_space(self):
         agents = list(self.agents.values())
-        return agents[0].action_space
+        ac_space = [ag.action_space for agent in agents]
+        return ac_space
 
     @property
     def observation_space(self):
-        # FIXME(ev) this is an information leak
         agents = list(self.agents.values())
-        return agents[0].observation_space
+        ob_space = [agent.observation_space for ag in agents]
+        return ob_space
 
     def custom_reset(self):
         """Initialize the walls and the waste"""

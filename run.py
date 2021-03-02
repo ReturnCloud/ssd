@@ -15,7 +15,7 @@ from envs.cleanup import CleanupEnv
 from algo.ppo import PPO
 from algo.model import Policy
 from algo.storage import RolloutStorage
-# from config import get_config
+from config import get_config
 from envs.vec_env import SubprocVecEnv, DummyVecEnv
 from algo.algo_utils import update_linear_schedule
 import shutil
@@ -58,22 +58,8 @@ def main():
         torch.set_num_threads(args.n_training_threads)
 
     # path
-    model_dir = Path('./results') / args.env_name / args.algorithm_name
-    if not model_dir.exists():
-        curr_run = 'run1'
-    else:
-        exst_run_nums = [int(str(folder.name).split('run')[1]) for folder in model_dir.iterdir() if str(folder.name).startswith('run')]
-        if len(exst_run_nums) == 0:
-            curr_run = 'run1'
-        else:
-            curr_run = 'run%i' % (max(exst_run_nums) + 1)
-
-    run_dir = model_dir / curr_run
-    log_dir = run_dir / 'logs'
-    save_dir = run_dir / 'models'
-    os.makedirs(str(log_dir))
-    os.makedirs(str(save_dir))
-    logger = SummaryWriter(str(log_dir))
+    log_dir = f'./experiments/{args.env_name}/log'
+    logger = SummaryWriter(log_dir)
 
     # env
     envs = make_parallel_env(args)
