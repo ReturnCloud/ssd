@@ -8,8 +8,7 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from tensorboardX import SummaryWriter
-
+from torch.utils.tensorboard import SummaryWriter
 from envs.harvest import HarvestEnv
 from envs.cleanup import CleanupEnv
 from algo.ppo import PPO
@@ -60,7 +59,7 @@ def main():
     # path
     log_dir = f'./experiments/{args.env_name}/log'
     logger = SummaryWriter(log_dir)
-
+    logger = None
     # env
     envs = make_parallel_env(args)
     #Policy network
@@ -187,8 +186,7 @@ def main():
             masks = []
             bad_masks = []
             for i in range(args.num_agents):
-                mask = []
-                bad_mask = []
+                mask, bad_mask = [], []
                 for done_ in done:
                     if done_[i]:
                         mask.append([0.0])
@@ -254,7 +252,7 @@ def main():
             rollouts[i].masks[0].copy_(torch.ones(args.n_rollout_threads, 1))
             rollouts[i].bad_masks[0].copy_(torch.ones(args.n_rollout_threads, 1))
             rollouts[i].to(device)
-
+'''
         for i in range(args.num_agents):
             # save for every interval-th episode or for the last epoch
             if (episode % args.save_interval == 0 or episode == episodes - 1):
@@ -262,4 +260,4 @@ def main():
                         'model': actor_critic[i]
                         },
                         str(save_dir) + "/agent%i_model" % i + ".pt")
-
+'''
