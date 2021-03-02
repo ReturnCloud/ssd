@@ -68,7 +68,7 @@ class CleanupEnv(MapEnv):
     @property
     def observation_space(self):
         agents = list(self.agents.values())
-        ob_space = [agent.observation_space for ag in agents]
+        ob_space = [ag.observation_space for ag in agents]
         return ob_space
 
     def custom_reset(self):

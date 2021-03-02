@@ -128,22 +128,6 @@ def main():
         rollouts[i].to(device)
 
     # run
-    coop_num = []
-    defect_num = []
-    coopdefect_num = []
-    defectcoop_num = []
-    gore1_num = []
-    gore2_num = []
-    gore3_num =[]
-    hare1_num = []
-    hare2_num = []
-    hare3_num = []
-    collective_return = []
-    apple_consumption = []
-    waste_cleared = []
-    sustainability = []
-    fire = []
-
     start = time.time()
     episodes = int(args.num_env_steps) // args.episode_length // args.n_rollout_threads
     all_episode = 0
@@ -153,10 +137,7 @@ def main():
         if args.use_linear_lr_decay:
             # decrease learning rate linearly
             for i in range(args.num_agents):
-                update_linear_schedule(agents[i].optimizer,
-                                       episode,
-                                       episodes,
-                                       args.lr)
+                update_linear_schedule(agents[i].optimizer, episode, episodes, args.lr)
 
         for step in range(args.episode_length):
             # Sample actions
@@ -261,124 +242,6 @@ def main():
             action_losses.append(action_loss)
             dist_entropies.append(dist_entropy)
 
-        if args.env_name == "StagHunt":
-            for info in infos:
-                if 'coop&coop_num' in info.keys():
-                    coop_num.append(info['coop&coop_num'])
-                if 'defect&defect_num' in info.keys():
-                    defect_num.append(info['defect&defect_num'])
-                if 'coop&defect_num' in info.keys():
-                    coopdefect_num.append(info['coop&defect_num'])
-                if 'defect&coop_num' in info.keys():
-                    defectcoop_num.append(info['defect&coop_num'])
-
-            for i in range(args.n_rollout_threads):
-                logger.add_scalars('coop&coop_num_per_episode',
-                        {'coop&coop_num_per_episode': coop_num[all_episode]},
-                        all_episode)
-                logger.add_scalars('defect&defect_num_per_episode',
-                        {'defect&defect_num_per_episode': defect_num[all_episode]},
-                        all_episode)
-                logger.add_scalars('coop&defect_num_per_episode',
-                        {'coop&defect_num_per_episode': coopdefect_num[all_episode]},
-                        all_episode)
-                logger.add_scalars('defect&coop_num_per_episode',
-                        {'defect&coop_num_per_episode': defectcoop_num[all_episode]},
-                        all_episode)
-                all_episode += 1
-        elif args.env_name == "StagHuntGW":
-            for info in infos:
-                if 'collective_return' in info.keys():
-                    collective_return.append(info['collective_return'])
-                if 'coop&coop_num' in info.keys():
-                    coop_num.append(info['coop&coop_num'])
-                if 'gore1_num' in info.keys():
-                    gore1_num.append(info['gore1_num'])
-                if 'gore2_num' in info.keys():
-                    gore2_num.append(info['gore2_num'])
-                if 'hare1_num' in info.keys():
-                    hare1_num.append(info['hare1_num'])
-                if 'hare2_num' in info.keys():
-                    hare2_num.append(info['hare2_num'])
-            for i in range(args.n_rollout_threads):
-                logger.add_scalars('collective_return',
-                    {'collective_return': collective_return[all_episode]},
-                    all_episode)
-                logger.add_scalars('coop&coop_num_per_episode',
-                        {'coop&coop_num_per_episode': coop_num[all_episode]},
-                        all_episode)
-                logger.add_scalars('gore1_num_per_episode',
-                    {'gore1_num_per_episode': gore1_num[all_episode]},
-                    all_episode)
-                logger.add_scalars('gore2_num_per_episode',
-                    {'gore2_num_per_episode': gore2_num[all_episode]},
-                    all_episode)
-                logger.add_scalars('hare1_num_per_episode',
-                    {'hare1_num_per_episode': hare1_num[all_episode]},
-                    all_episode)
-                logger.add_scalars('hare2_num_per_episode',
-                    {'hare2_num_per_episode': hare2_num[all_episode]},
-                    all_episode)
-                all_episode += 1
-        elif args.env_name == "EscalationGW":
-            for info in infos:
-                if 'collective_return' in info.keys():
-                    collective_return.append(info['collective_return'])
-                if 'coop&coop_num' in info.keys():
-                    coop_num.append(info['coop&coop_num'])
-            for i in range(args.n_rollout_threads):
-                logger.add_scalars('collective_return',
-                    {'collective_return': collective_return[all_episode]},
-                    all_episode)
-                logger.add_scalars('coop&coop_num_per_episode',
-                        {'coop&coop_num_per_episode': coop_num[all_episode]},
-                        all_episode)
-                all_episode += 1
-        elif args.env_name == "multi_StagHuntGW":
-            for info in infos:
-                if 'collective_return' in info.keys():
-                    collective_return.append(info['collective_return'])
-                if 'coop&coop_num' in info.keys():
-                    coop_num.append(info['coop&coop_num'])
-                if 'gore0_num' in info.keys():
-                    gore1_num.append(info['gore0_num'])
-                if 'gore1_num' in info.keys():
-                    gore2_num.append(info['gore1_num'])
-                if 'gore2_num' in info.keys():
-                    gore3_num.append(info['gore2_num'])
-                if 'hare0_num' in info.keys():
-                    hare1_num.append(info['hare0_num'])
-                if 'hare1_num' in info.keys():
-                    hare2_num.append(info['hare1_num'])
-                if 'hare2_num' in info.keys():
-                    hare3_num.append(info['hare2_num'])
-            for i in range(args.n_rollout_threads):
-                logger.add_scalars('collective_return',
-                    {'collective_return': collective_return[all_episode]},
-                    all_episode)
-                logger.add_scalars('coop&coop_num_per_episode',
-                        {'coop&coop_num_per_episode': coop_num[all_episode]},
-                        all_episode)
-                logger.add_scalars('gore1_num_per_episode',
-                    {'gore1_num_per_episode': gore1_num[all_episode]},
-                    all_episode)
-                logger.add_scalars('gore2_num_per_episode',
-                    {'gore2_num_per_episode': gore2_num[all_episode]},
-                    all_episode)
-                logger.add_scalars('gore3_num_per_episode',
-                                   {'gore3_num_per_episode': gore3_num[all_episode]},
-                                   all_episode)
-                logger.add_scalars('hare1_num_per_episode',
-                    {'hare1_num_per_episode': hare1_num[all_episode]},
-                    all_episode)
-                logger.add_scalars('hare2_num_per_episode',
-                    {'hare2_num_per_episode': hare2_num[all_episode]},
-                    all_episode)
-                logger.add_scalars('hare3_num_per_episode',
-                                   {'hare3_num_per_episode': hare3_num[all_episode]},
-                                   all_episode)
-                all_episode += 1
-
         # clean the buffer and reset
         obs = envs.reset()
         for i in range(args.num_agents):
@@ -400,17 +263,3 @@ def main():
                         },
                         str(save_dir) + "/agent%i_model" % i + ".pt")
 
-        # log information
-        if episode % args.log_interval == 0:
-            total_num_steps = (episode + 1) * args.episode_length * args.n_rollout_threads
-            end = time.time()
-            print("\n Updates {}/{} episodes, total num timesteps {}/{}, FPS {}.\n"
-                .format(episode,
-                        episodes,
-                        total_num_steps,
-                        args.num_env_steps,
-                        int(total_num_steps / (end - start))))
-            for i in range(args.num_agents):
-                print("value loss of agent%i: " %i + str(value_losses[i]))
-    logger.export_scalars_to_json(str(log_dir / 'summary.json'))
-    logger.close()

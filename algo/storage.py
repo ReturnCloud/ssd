@@ -7,10 +7,11 @@ def _flatten_helper(T, N, _tensor):
 
 
 class RolloutStorage(object):
-    def __init__(self, num_agents, agent_id, episode_length, n_rollout_threads, obs_shape, action_space,
+    def __init__(self, num_agents, agent_id, episode_length, n_rollout_threads, obs_space, action_space,
                  recurrent_hidden_state_size):
 
         self.agent_id = agent_id
+        obs_shape = obs_space.shape
         if len(obs_shape) == 3:
             self.share_obs = torch.zeros(episode_length + 1, n_rollout_threads, obs_shape[0] * num_agents, obs_shape[1], obs_shape[2])
         elif len(obs_shape) == 1:

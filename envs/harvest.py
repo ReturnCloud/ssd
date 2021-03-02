@@ -16,6 +16,8 @@ class HarvestEnv(MapEnv):
 
     def __init__(self, ascii_map=HARVEST_MAP, num_agents=1, render=False):
         super().__init__(ascii_map, num_agents, render)
+        # print ('harvest')
+        # self.debug = 1
         self.apple_points = []
         for row in range(self.base_map.shape[0]):
             for col in range(self.base_map.shape[1]):
@@ -25,13 +27,14 @@ class HarvestEnv(MapEnv):
     @property
     def action_space(self):
         agents = list(self.agents.values())
-        ac_space = [ag.action_space for agent in agents]
+        ac_space = [ag.action_space for ag in agents]
         return ac_space
 
     @property
     def observation_space(self):
         agents = list(self.agents.values())
-        ob_space = [agent.observation_space for ag in agents]
+        ob_space = [ag.observation_space for ag in agents]
+        # print ('why')
         return ob_space
 
     def setup_agents(self):
