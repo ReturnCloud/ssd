@@ -1,4 +1,5 @@
 import numpy as np
+import random
 import gym
 from envs.cleanup import CleanupEnv
 from envs.cleanup import CleanupAgent
@@ -14,7 +15,7 @@ class Sarsa(object):
 
     def _get_state_name(self, state):
         smap = state['agent-0']
-        return (smap.mean(), smap.std())
+        return int(smap.mean())
 
     def _is_state_in_Q(self, s):
         return self.Q.get(s) is not None
@@ -23,7 +24,7 @@ class Sarsa(object):
         if not self._is_state_in_Q(s_name):
             self.Q[s_name] = {}
             for action in range(self.env.action_space.n):
-                default_v = random() / 10 if randomized is True else 0.0
+                default_v = random.random() / 10 if randomized is True else 0.0
                 self.Q[s_name][action] = default_v
 
     def _assert_state_in_Q(self, s, randomized=True):
@@ -32,12 +33,12 @@ class Sarsa(object):
             self._init_state_value(s, randomized)
 
     def _get_Q(self, s, a):
-        real_a = a[0]
+        real_a = a['agent-0']
         self._assert_state_in_Q(s, randomized=True)
         return self.Q[s][real_a]
 
     def _set_Q(self, s, a, value):
-        real_a = a[0]
+        real_a = a['agent-0']
         self._assert_state_in_Q(s, randomized=True)
         self.Q[s][real_a] = value
 
@@ -50,14 +51,14 @@ class Sarsa(object):
         epsilon = 1.00 / (episode_num + 1)
         Q_s = self.Q[s]
         str_act = "unknown"
-        rand_value = random()
+        rand_value = random.random()
         action = None
         if use_epsilon and rand_value < epsilon:
             action = self.env.action_space.sample()
         else:
             str_act = max(Q_s, key=Q_s.get)
             action = int(str_act)
-        return {0: action}
+        return {'agent-0': action}
 
     def act(self, a):
         return self.env.step(a)
@@ -66,18 +67,20 @@ class Sarsa(object):
     def learning(self, gamma, alpha, max_episode_num):
         # self.Position_t_name, self.reward_t1 = self.observe(env)
         total_time, time_in_episode, num_episode = 0, 0, 0
-
+        self.state = self.env.reset()
+        self._initAgent()
         while num_episode < max_episode_num:
-            self.state = self.env.reset()
-            s0 = self._get_state_id(self.state)
+            # self.state = self.env.reset()
+            s0 = self._get_state_name(self.state)
             # self.env.render()
             a0 = self.performPolicy(s0, num_episode, use_epsilon=True)
 
             time_in_episode = 0
-            is_done = False
-            while not is_done:
+            real_is_done = False
+            while not real_is_done:
                 # a0 = self.performPolicy(s0, num_episode)
                 s1, r1, is_done, info = self.act(a0)
+                real_is_done = is_done['agent-0']
                 # self.env.render()
                 s1 = self._get_state_name(s1)
                 self._assert_state_in_Q(s1, randomized=True)
@@ -85,7 +88,8 @@ class Sarsa(object):
                 a1 = self.performPolicy(s1, num_episode, use_epsilon=True)
                 old_q = self._get_Q(s0, a0)
                 q_prime = self._get_Q(s1, a1)
-                td_target = r1 + gamma * q_prime
+                real_r1 = r1['agent-0']
+                td_target = real_r1 + gamma * q_prime
                 #alpha = alpha / num_episode
                 new_q = old_q + alpha * (td_target - old_q)
                 self._set_Q(s0, a0, new_q)
@@ -96,6 +100,8 @@ class Sarsa(object):
 
                 s0, a0 = s1, a1
                 time_in_episode += 1
+                if time_in_episode >= 50:
+                    break
 
             print("Episode {0} takes {1} steps.".format(
                 num_episode, time_in_episode))
@@ -112,4 +118,4 @@ print ('clean up registered')
 algo = Sarsa(env)
 env.reset()
 print("Learning...")
-algo.learning(gamma=0.9, alpha=0.1, max_episode_num=500)
+algo.learning(gamma=0.9, alpha=0.1, max_episode_num=50)
