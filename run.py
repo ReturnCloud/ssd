@@ -115,11 +115,12 @@ def main():
         rollouts.append(ro)
 
     # reset env
-    obs = envs.reset()
+    obs = envs.reset() # (n_thread, n_agent, c, h, w)
+    cur_share_obs = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
     # rollout
     for i in range(args.num_agents):
-        rollouts[i].share_obs[0].copy_(torch.tensor(obs.reshape(args.n_rollout_threads, -1)))
-        rollouts[i].obs[0].copy_(torch.tensor(obs[:,i,:]))
+        rollouts[i].share_obs[0].copy_(torch.tensor(cur_share_obs))
+        rollouts[i].obs[0].copy_(torch.tensor(obs[:,i,:,:,:]))
         rollouts[i].recurrent_hidden_states.zero_()
         rollouts[i].recurrent_hidden_states_critic.zero_()
         rollouts[i].recurrent_c_states.zero_()
@@ -180,14 +181,13 @@ def main():
 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(actions_env)
+            cur_share_obs = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
 
-            # If done then clean the history of observations.
-            # insert data in buffer
-            masks = []
-            bad_masks = []
+            # insert data in buffer, if done then clean the history of observations.
+            masks, bad_masks = [], []
             for i in range(args.num_agents):
                 mask, bad_mask = [], []
-                for done_ in done:
+                for done_ in done[:-1]:
                     if done_[i]:
                         mask.append([0.0])
                         bad_mask.append([1.0])
@@ -198,8 +198,8 @@ def main():
                 bad_masks.append(torch.FloatTensor(bad_mask))
 
             for i in range(args.num_agents):
-                rollouts[i].insert(torch.tensor(obs.reshape(args.n_rollout_threads, -1)),
-                                        torch.tensor(obs[:,i,:]),
+                rollouts[i].insert(torch.tensor(cur_share_obs),
+                                        torch.tensor(obs[:,i,:,:,:,:]),
                                         recurrent_hidden_statess[i],
                                         recurrent_hidden_statess_critic[i],
                                         recurrent_c_statess[i],
@@ -242,6 +242,7 @@ def main():
 
         # clean the buffer and reset
         obs = envs.reset()
+        cur_share_obs = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
         for i in range(args.num_agents):
             rollouts[i].share_obs[0].copy_(torch.tensor(obs.reshape(args.n_rollout_threads, -1)))
             rollouts[i].obs[0].copy_(torch.tensor(obs[:,i,:]))

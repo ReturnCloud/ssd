@@ -183,18 +183,18 @@ class MapEnv(gym.Env):
 
         map_with_agents = self.get_map_with_agents()
 
-        observations = {}
-        rewards = {}
-        dones = {}
+        observations = []
+        rewards = []
+        dones = []
         info = {}
         for agent in self.agents.values():
             agent.grid = map_with_agents
             rgb_arr = self.map_to_colors(agent.get_state(), self.color_map)
             rgb_arr = self.rotate_view(agent.orientation, rgb_arr)
-            observations[agent.agent_id] = rgb_arr
-            rewards[agent.agent_id] = agent.compute_reward()
-            dones[agent.agent_id] = agent.get_done()
-        dones["__all__"] = np.any(list(dones.values()))
+            observations.append(rgb_arr)
+            rewards.append(agent.compute_reward())
+            dones.append(agent.get_done())
+        dones.append(np.any(list(dones.values())))
         return observations, rewards, dones, info
 
     def reset(self):
@@ -217,14 +217,14 @@ class MapEnv(gym.Env):
 
         map_with_agents = self.get_map_with_agents()
 
-        observations = {}
+        observations = []
         for agent in self.agents.values():
             agent.grid = map_with_agents
             # agent.grid = util.return_view(map_with_agents, agent.pos,
             #                               agent.row_size, agent.col_size)
             rgb_arr = self.map_to_colors(agent.get_state(), self.color_map)
-            observations[agent.agent_id] = rgb_arr
-        return observations
+            observations.append(rgb_arr)
+        return np.array(observations)
 
     @property
     def agent_pos(self):
@@ -309,10 +309,10 @@ class MapEnv(gym.Env):
         if color_map is None:
             color_map = self.color_map
 
-        rgb_arr = np.zeros((map.shape[0], map.shape[1], 3), dtype=int)
+        rgb_arr = np.zeros((3, map.shape[0], map.shape[1]), dtype=int)
         for row_elem in range(map.shape[0]):
             for col_elem in range(map.shape[1]):
-                rgb_arr[row_elem, col_elem, :] = color_map[map[row_elem, col_elem]]
+                rgb_arr[:, row_elem, col_elem] = color_map[map[row_elem, col_elem]]
 
         return rgb_arr
 
@@ -354,7 +354,7 @@ class MapEnv(gym.Env):
         """
 
         reserved_slots = []
-        for agent_id, action in agent_actions.items():
+        for agent_id in agent_actions:
             agent = self.agents[agent_id]
             selected_action = ACTIONS[action]
             # TODO(ev) these two parts of the actions

@@ -13,7 +13,7 @@ class RolloutStorage(object):
         self.agent_id = agent_id
         obs_shape = obs_space.shape
         if len(obs_shape) == 3:
-            self.share_obs = torch.zeros(episode_length + 1, n_rollout_threads, obs_shape[0] * num_agents, obs_shape[1], obs_shape[2])
+            self.share_obs = torch.zeros(episode_length + 1, n_rollout_threads, num_agents*obs_shape[0],obs_shape[1], obs_shape[2])
         elif len(obs_shape) == 1:
             self.share_obs = torch.zeros(episode_length + 1, n_rollout_threads, obs_shape[0] * num_agents)
         else:
