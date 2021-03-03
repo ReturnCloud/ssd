@@ -1,0 +1,1 @@
+CUDA_DEVICE_VISIBLE=0 python run.py

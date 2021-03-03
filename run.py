@@ -17,7 +17,7 @@ from algo.storage import RolloutStorage
 from config import get_config
 from envs.vec_env import SubprocVecEnv, DummyVecEnv
 from algo.algo_utils import update_linear_schedule
-import shutil
+from utils import *
 
 def make_parallel_env(args):
     def get_env_fn(rank):
@@ -40,13 +40,12 @@ def make_parallel_env(args):
 def main():
     args = get_config()
 
-    # seed
+    # ----------------- seed ------------------
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
     np.random.seed(args.seed)
 
     # cuda
-    args.cuda = False
     if args.cuda and torch.cuda.is_available():
         device = torch.device("cuda:0")
         torch.set_num_threads(args.n_training_threads)
@@ -57,13 +56,13 @@ def main():
         device = torch.device("cpu")
         torch.set_num_threads(args.n_training_threads)
 
-    # path
+    # ----------------- prepare for env, network, algo, buffer, logger ------------------
     log_dir = f'./experiments/{args.env_name}/log'
+    ckpt_dir = f'./experiments/{args.env_name}/model'
+    reset_dir(log_dir)
+    mk_dir(ckpt_dir)
     logger = SummaryWriter(log_dir)
-    logger = None
-    # env
     envs = make_parallel_env(args)
-    #Policy network
     actor_critic = []
     if args.share_policy:
         ac = Policy(envs.observation_space[0],
@@ -90,7 +89,6 @@ def main():
     agents = []
     rollouts = []
     for agent_id in range(args.num_agents):
-        # algorithm
         agent = PPO(actor_critic[agent_id],
                    agent_id,
                    args.clip_param,
@@ -104,7 +102,6 @@ def main():
                    eps=args.eps,
                    max_grad_norm=args.max_grad_norm,
                    use_clipped_value_loss=args.use_clipped_value_loss)
-        #replay buffer
         ro = RolloutStorage(args.num_agents,
                             agent_id,
                             args.episode_length,
@@ -115,10 +112,9 @@ def main():
         agents.append(agent)
         rollouts.append(ro)
 
-    # reset env
+    # ----------------- reset env ------------------
     obs = envs.reset() # (n_thread, n_agent, c, h, w)
     cur_share_obs = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
-    # rollout
     for i in range(args.num_agents):
         rollouts[i].share_obs[0].copy_(torch.tensor(cur_share_obs))
         rollouts[i].obs[0].copy_(torch.tensor(obs[:,i,:,:,:]))
@@ -128,7 +124,7 @@ def main():
         rollouts[i].recurrent_c_states_critic.zero_()
         rollouts[i].to(device)
 
-    # run
+    # ----------------- run ------------------
     start = time.time()
     episodes = int(args.num_env_steps) // args.episode_length // args.n_rollout_threads
     all_episode = 0
@@ -236,7 +232,7 @@ def main():
                                         args.gae_lambda,
                                         args.use_proper_time_limits)
 
-        # update the network
+         # ----------------- update ------------------
         value_losses = []
         action_losses = []
         dist_entropies = []
@@ -246,7 +242,7 @@ def main():
             action_losses.append(action_loss)
             dist_entropies.append(dist_entropy)
 
-        # clean the buffer and reset
+        # ----------------- clean the buffer and reset ------------------
         obs = envs.reset()
         cur_share_obs = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
         for i in range(args.num_agents):
@@ -259,16 +255,12 @@ def main():
             rollouts[i].masks[0].copy_(torch.ones(args.n_rollout_threads, 1))
             rollouts[i].bad_masks[0].copy_(torch.ones(args.n_rollout_threads, 1))
             rollouts[i].to(device)
-        print (f'update {episode}')
-'''
-        for i in range(args.num_agents):
-            # save for every interval-th episode or for the last epoch
-            if (episode % args.save_interval == 0 or episode == episodes - 1):
-                torch.save({
-                        'model': actor_critic[i]
-                        },
-                        str(save_dir) + "/agent%i_model" % i + ".pt")
-'''
+
+        if (episode % args.save_interval == 0 or episode == episodes - 1):
+            print (f'save the model of episode {episode}')
+            for i in range(args.num_agents):
+                torch.save(actor_critic[i].state_dict(), f'{ckpt_dir}/agent_{i}.pth')
+
 
 if __name__ == '__main__':
     main()
