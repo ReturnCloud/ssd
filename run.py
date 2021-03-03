@@ -46,6 +46,7 @@ def main():
     np.random.seed(args.seed)
 
     # cuda
+    args.cuda = False
     if args.cuda and torch.cuda.is_available():
         device = torch.device("cuda:0")
         torch.set_num_threads(args.n_training_threads)
@@ -170,13 +171,18 @@ def main():
 
             # rearrange action
             actions_env = []
+            # for i in range(args.n_rollout_threads):
+            #     one_hot_action_env = []
+            #     for k in range(args.num_agents):
+            #         one_hot_action = np.zeros(envs.action_space[0].n)
+            #         one_hot_action[actions[k][i]] = 1
+            #         one_hot_action_env.append(one_hot_action)
+            #     actions_env.append(one_hot_action_env)
             for i in range(args.n_rollout_threads):
-                one_hot_action_env = []
+                action_env = []
                 for k in range(args.num_agents):
-                    one_hot_action = np.zeros(envs.action_space[0].n)
-                    one_hot_action[actions[k][i]] = 1
-                    one_hot_action_env.append(one_hot_action)
-                actions_env.append(one_hot_action_env)
+                    action_env.append(actions[k][i])
+                actions_env.append(action_env)
 
 
             # Obser reward and next obs
@@ -187,7 +193,7 @@ def main():
             masks, bad_masks = [], []
             for i in range(args.num_agents):
                 mask, bad_mask = [], []
-                for done_ in done[:-1]:
+                for done_ in done:
                     if done_[i]:
                         mask.append([0.0])
                         bad_mask.append([1.0])
@@ -199,7 +205,7 @@ def main():
 
             for i in range(args.num_agents):
                 rollouts[i].insert(torch.tensor(cur_share_obs),
-                                        torch.tensor(obs[:,i,:,:,:,:]),
+                                        torch.tensor(obs[:,i,:,:,:]),
                                         recurrent_hidden_statess[i],
                                         recurrent_hidden_statess_critic[i],
                                         recurrent_c_statess[i],
@@ -244,7 +250,7 @@ def main():
         obs = envs.reset()
         cur_share_obs = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
         for i in range(args.num_agents):
-            rollouts[i].share_obs[0].copy_(torch.tensor(obs.reshape(args.n_rollout_threads, -1)))
+            rollouts[i].share_obs[0].copy_(torch.tensor(cur_share_obs))
             rollouts[i].obs[0].copy_(torch.tensor(obs[:,i,:]))
             rollouts[i].recurrent_hidden_states.zero_()
             rollouts[i].recurrent_hidden_states_critic.zero_()
@@ -253,6 +259,7 @@ def main():
             rollouts[i].masks[0].copy_(torch.ones(args.n_rollout_threads, 1))
             rollouts[i].bad_masks[0].copy_(torch.ones(args.n_rollout_threads, 1))
             rollouts[i].to(device)
+        print (f'update {episode}')
 '''
         for i in range(args.num_agents):
             # save for every interval-th episode or for the last epoch

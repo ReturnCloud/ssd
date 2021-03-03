@@ -180,6 +180,7 @@ class SubprocVecEnv(VecEnv):
         results = [remote.recv() for remote in self.remotes]
         self.waiting = False
         obs, rews, dones, infos = zip(*results)
+        # print (len(rews), rews[0].shape, len(obs), obs[0].shape)
         return np.stack(obs), np.stack(rews), np.stack(dones), infos
 
     def reset(self):

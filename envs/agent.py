@@ -224,7 +224,7 @@ class CleanupAgent(Agent):
     # defined in two places
     def action_map(self, action_number):
         """Maps action_number to a desired action in the map"""
-        return CLEANUP_ACTIONS[action_number]
+        return CLEANUP_ACTIONS[int(action_number)]
 
     def fire_beam(self, char):
         if char == 'F':

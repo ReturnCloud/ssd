@@ -163,10 +163,10 @@ class MapEnv(gym.Env):
 
         self.beam_pos = []
         agent_actions = {}
-        for agent_id, action in actions.items():
+        for agent_id, action in enumerate(actions):
             agent_action = self.agents[agent_id].action_map(action)
             agent_actions[agent_id] = agent_action
-
+        # print (agent_actions)
         # move
         self.update_moves(agent_actions)
 
@@ -194,8 +194,11 @@ class MapEnv(gym.Env):
             observations.append(rgb_arr)
             rewards.append(agent.compute_reward())
             dones.append(agent.get_done())
-        dones.append(np.any(list(dones.values())))
-        return observations, rewards, dones, info
+        dones.append(np.any(dones))
+        # print (np.array(observations).shape, np.array(rewards).shape, np.array(dones).shape)
+        return np.array(observations), np.array(rewards), np.array(dones), np.array(info)
+
+        # return observations, rewards, dones, info
 
     def reset(self):
         """Reset the environment.
@@ -265,7 +268,7 @@ class MapEnv(gym.Env):
         grid = np.copy(self.world_map)
 
         for agent_id, agent in self.agents.items():
-            char_id = str(int(agent_id[-1]) + 1)
+            char_id = str(agent_id + 1)
 
             # If agent is not within map, skip.
             if not(agent.pos[0] >= 0 and agent.pos[0] < grid.shape[0] and
@@ -354,7 +357,7 @@ class MapEnv(gym.Env):
         """
 
         reserved_slots = []
-        for agent_id in agent_actions:
+        for agent_id, action in agent_actions.items():
             agent = self.agents[agent_id]
             selected_action = ACTIONS[action]
             # TODO(ev) these two parts of the actions
@@ -658,11 +661,11 @@ class MapEnv(gym.Env):
         if orientation == 'UP':
             return view
         elif orientation == 'LEFT':
-            return np.rot90(view, k=1, axes=(0, 1))
+            return np.rot90(view, k=1, axes=(1, 2))
         elif orientation == 'DOWN':
-            return np.rot90(view, k=2, axes=(0, 1))
+            return np.rot90(view, k=2, axes=(1, 2))
         elif orientation == 'RIGHT':
-            return np.rot90(view, k=3, axes=(0, 1))
+            return np.rot90(view, k=3, axes=(1, 2))
         else:
             raise ValueError('Orientation {} is not valid'.format(orientation))
 
