@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import multiprocessing
 from multiprocessing import Process, Pipe
 from abc import ABC, abstractmethod
 
@@ -152,13 +153,33 @@ def worker(remote, parent_remote, env_fn_wrapper):
             raise NotImplementedError
 
 class SubprocVecEnv(VecEnv):
-    def __init__(self, env_fns, spaces=None):
+    def __init__(self, env_fns, start_method=None):
         """
         envs: list of gym environments to run in subprocesses
         """
         self.waiting = False
         self.closed = False
         nenvs = len(env_fns)
+        if start_method is None:
+            # Fork is not a thread safe method (see issue #217)
+            # but is more user friendly (does not require to wrap the code in
+            # a `if __name__ == "__main__":`)
+            forkserver_available = 'forkserver' in multiprocessing.get_all_start_methods(
+            )
+            start_method = 'forkserver' if forkserver_available else 'spawn'
+        ctx = multiprocessing.get_context(start_method)
+
+        self.remotes, self.work_remotes = zip(
+            *[ctx.Pipe() for _ in range(nenvs)])
+        self.processes = []
+        for work_remote, remote, env_fn in zip(self.work_remotes, self.remotes, env_fns):
+            args = (work_remote, remote, CloudpickleWrapper(env_fn))
+            # daemon=True: if the main process crashes, we should not cause things to hang
+            process = ctx.Process(target=worker, args=args, daemon=True)
+            process.start()
+            self.processes.append(process)
+            work_remote.close()
+        '''
         self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(nenvs)])
         self.ps = [Process(target=worker, args=(work_remote, remote, CloudpickleWrapper(env_fn)))
             for (work_remote, remote, env_fn) in zip(self.work_remotes, self.remotes, env_fns)]
@@ -167,6 +188,7 @@ class SubprocVecEnv(VecEnv):
             p.start()
         for remote in self.work_remotes:
             remote.close()
+        '''
         self.remotes[0].send(('get_spaces', None))
         observation_space, action_space = self.remotes[0].recv()
         VecEnv.__init__(self, len(env_fns), observation_space, action_space)

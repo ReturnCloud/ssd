@@ -15,7 +15,7 @@ from algo.ppo import PPO
 from algo.model import Policy
 from algo.storage import RolloutStorage
 from config import get_config
-from envs.vec_env import SubprocVecEnv, DummyVecEnv
+from envs.vec_env import SubprocVecEnv #, DummyVecEnv
 from algo.algo_utils import update_linear_schedule
 from utils import *
 
@@ -59,9 +59,10 @@ def main():
     # ----------------- prepare for env, network, algo, buffer, logger ------------------
     log_dir = f'./experiments/{args.env_name}/log'
     ckpt_dir = f'./experiments/{args.env_name}/model'
-    reset_dir(log_dir)
+    # reset_dir(log_dir)
     mk_dir(ckpt_dir)
-    logger = SummaryWriter(log_dir)
+    # logger = SummaryWriter(log_dir)
+    logger = None
     envs = make_parallel_env(args)
     actor_critic = []
     if args.share_policy:
@@ -255,7 +256,7 @@ def main():
             rollouts[i].masks[0].copy_(torch.ones(args.n_rollout_threads, 1))
             rollouts[i].bad_masks[0].copy_(torch.ones(args.n_rollout_threads, 1))
             rollouts[i].to(device)
-
+        print ('ok')
         if (episode % args.save_interval == 0 or episode == episodes - 1):
             print (f'save the model of episode {episode}')
             for i in range(args.num_agents):
