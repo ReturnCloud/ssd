@@ -5,10 +5,10 @@ def get_config():
 
     # prepare
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda", action='store_false', default=True)
+    parser.add_argument("--cuda", type=int, default=0)
     parser.add_argument("--cuda_deterministic", action='store_false', default=True)
     parser.add_argument("--n_training_threads", type=int, default=1)
-    parser.add_argument("--n_rollout_threads", type=int, default=64) # 64
+    parser.add_argument("--n_rollout_threads", type=int, default=8) # 64
     parser.add_argument("--num_env_steps", type=int, default=10e8, help='number of environment steps to train (default: 10e6)')
 
     # rnn

@@ -48,6 +48,9 @@ class PPO():
         value_loss_epoch = 0
         action_loss_epoch = 0
         dist_entropy_epoch = 0
+        rew = [0 for _ in range(rollouts.rewards.shape[1])]
+        for i in range(rollouts.rewards.size()[1]):
+            rew[i] += rollouts.rewards[:,i,:].sum().cpu().numpy()
 
         for e in range(self.ppo_epoch):
             if self.actor_critic.is_recurrent or self.actor_critic.is_lstm:
@@ -94,9 +97,6 @@ class PPO():
                 self.optimizer.step()
 
                 if self.logger is not None:
-                    rew = []
-                    for i in range(rollouts.rewards.size()[1]):
-                        rew.append(rollouts.rewards[:,i,:].sum().cpu().numpy())
                     self.logger.add_scalars('agent%i/mean_episode_reward' % self.agent_id,
                         {'mean_episode_reward': np.mean(np.array(rew))},
                         self.step)

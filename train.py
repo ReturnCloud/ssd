@@ -37,7 +37,7 @@ def make_parallel_env(args):
     else:
         return SubprocVecEnv([get_env_fn(i) for i in range(args.n_rollout_threads)])
 
-def train(args):
+def main():
     args = get_config()
 
     # ----------------- seed ------------------
@@ -46,8 +46,8 @@ def train(args):
     np.random.seed(args.seed)
 
     # cuda
-    if args.cuda and torch.cuda.is_available():
-        device = torch.device("cuda:0")
+    if args.cuda>=0 and torch.cuda.is_available():
+        device = torch.device(f"cuda:{args.cuda}")
         torch.set_num_threads(args.n_training_threads)
         if args.cuda_deterministic:
             torch.backends.cudnn.benchmark = False
@@ -57,14 +57,25 @@ def train(args):
         torch.set_num_threads(args.n_training_threads)
 
     # ----------------- prepare for env, network, algo, buffer, logger ------------------
-    log_dir = f'./experiments/{args.env_name}/log'
-    ckpt_dir = f'./experiments/{args.env_name}/model'
+    attr = f'./experiments/{args.env_name}_{args.n_rollout_threads}/{args.num_agents}_'
+    if args.lstm:
+        attr += 'lstm'
+    elif args.recurrent_policy:
+        attr += 'recurrent'
+    elif args.naive_recurrent_policy:
+        attr += 'naive_recurrent'
+    else:
+        attr += 'none'
+
+    # log_dir = f'{attr}/log'
+    # ckpt_dir = f'{attr}/model'
     # reset_dir(log_dir)
-    mk_dir(ckpt_dir)
+    # mk_dir(ckpt_dir)
     # logger = SummaryWriter(log_dir)
-    logger = None
+    # logger = None
     envs = make_parallel_env(args)
     actor_critic = []
+    args.recurrent_policy = 1
     if args.share_policy:
         ac = Policy(envs.observation_space[0],
                     envs.action_space[0],
@@ -84,6 +95,7 @@ def train(args):
                       base_kwargs={'naive_recurrent': args.naive_recurrent_policy,
                                    'recurrent': args.recurrent_policy,
                                    'hidden_size': args.hidden_size})
+            print (ac)
             ac.to(device)
             actor_critic.append(ac)
 
@@ -130,7 +142,7 @@ def train(args):
     all_episode = 0
 
     for episode in range(episodes):
-        action_fire, action_clean = {f'agent_{i}': 0 for i in range(args.num_agents)}
+        action_fire, action_clean = {f'agent_{i}': 0 for i in range(args.num_agents)}, {f'agent_{i}': 0 for i in range(args.num_agents)}
 
         if args.use_linear_lr_decay:
             # decrease learning rate linearly
@@ -173,9 +185,9 @@ def train(args):
                 for k in range(args.num_agents):
                     action_env.append(actions[k][i])
                     if actions[k][i] == 7:
-                        action_fire[k] += 1 / (args.episode_length*args.n_rollout_threads*args.num_agents)
+                        action_fire[f'agent_{k}'] += 1 / (args.episode_length*args.n_rollout_threads*args.num_agents)
                     if actions[k][i] == 8:
-                        action_clean[k] += 1 / (args.episode_length*args.n_rollout_threads*args.num_agents)
+                        action_clean[f'agent_{k}'] += 1 / (args.episode_length*args.n_rollout_threads*args.num_agents)
                 actions_env.append(action_env)
 
             # Obser reward and next obs
@@ -230,17 +242,19 @@ def train(args):
                                         args.use_proper_time_limits)
 
          # ----------------- update and log ------------------
-        value_losses, action_losses, dist_entropies, rwds = {}, {}, {}, {}
+        value_losses, action_losses, dist_entropies, rwds = {}, {}, {}, {'all': 0}
         for i in range(args.num_agents):
             value_loss, action_loss, dist_entropy, rwd = agents[i].update(rollouts[i])
             rwds[f'agent_{i}'] = rwd
             value_losses[f'agent_{i}'] = value_loss
             action_losses[f'agent_{i}'] = action_loss
             dist_entropies[f'agent_{i}'] = dist_entropy
+        for k in range(args.num_agents):
+            rwds['all'] += rwds[f'agent_{k}']
         logger.add_scalars('value_loss', value_losses, episode)
         logger.add_scalars('action_loss', action_losses, episode)
         logger.add_scalars('dist_entropy', dist_entropies, episode)
-        logger.add_scalars('value_loss', rwds, episode)
+        logger.add_scalars('rwd', rwds, episode)
         logger.add_scalars('fire', action_fire, episode)
         logger.add_scalars('clean', action_clean, episode)
 

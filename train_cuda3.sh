@@ -1,0 +1,1 @@
+CUDA_DEVICE_VISIBLE=3 python train.py --num_agents 2 --lstm
