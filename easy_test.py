@@ -110,12 +110,17 @@ class Sarsa(object):
         return
 
 
-env = 'cleanup-v0'
-gym.register(env, entry_point=CleanupEnv)
-env = gym.make(env)
-print ('clean up registered')
+# env = 'cleanup-v0'
+# gym.register(env, entry_point=CleanupEnv)
+# env = gym.make(env)
+# print ('clean up registered')
 
-algo = Sarsa(env)
-env.reset()
-print("Learning...")
-algo.learning(gamma=0.9, alpha=0.1, max_episode_num=50)
+# algo = Sarsa(env)
+# env.reset()
+# print("Learning...")
+# algo.learning(gamma=0.9, alpha=0.1, max_episode_num=50)
+
+from envs.cleanup import CleanupEnv
+env = CleanupEnv(num_agents=4)
+a = np.array([env.reset()])
+print (a.shape)

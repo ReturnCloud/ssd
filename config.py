@@ -51,6 +51,7 @@ def get_config():
 
     # log
     parser.add_argument("--log_interval", type=int, default=1)
+    parser.add_argument("--eval_episodes", type=int, default=10)
 
     args = parser.parse_args()
     return args

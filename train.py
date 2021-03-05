@@ -67,15 +67,14 @@ def main():
     else:
         attr += 'none'
 
-    # log_dir = f'{attr}/log'
-    # ckpt_dir = f'{attr}/model'
-    # reset_dir(log_dir)
-    # mk_dir(ckpt_dir)
-    # logger = SummaryWriter(log_dir)
+    log_dir = f'{attr}/log'
+    ckpt_dir = f'{attr}/model'
+    reset_dir(log_dir)
+    mk_dir(ckpt_dir)
+    logger = SummaryWriter(log_dir)
     # logger = None
     envs = make_parallel_env(args)
     actor_critic = []
-    args.recurrent_policy = 1
     if args.share_policy:
         ac = Policy(envs.observation_space[0],
                     envs.action_space[0],
@@ -95,7 +94,6 @@ def main():
                       base_kwargs={'naive_recurrent': args.naive_recurrent_policy,
                                    'recurrent': args.recurrent_policy,
                                    'hidden_size': args.hidden_size})
-            print (ac)
             ac.to(device)
             actor_critic.append(ac)
 
