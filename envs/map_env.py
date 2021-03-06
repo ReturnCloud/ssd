@@ -330,8 +330,8 @@ class MapEnv(gym.Env):
         map_with_agents = self.get_map_with_agents()
 
         rgb_arr = self.map_to_colors(map_with_agents).transpose(1,2,0)
-        rgb_arr = rgb_arr[:,:,(2,1,0)]
-        res = cv2.resize(rgb_arr/255., dsize=(10*rgb_arr.shape[1], 10*rgb_arr.shape[0]), interpolation=cv2.INTER_NEAREST)
+        # rgb_arr = rgb_arr[:,:,(2,1,0)]
+        res = cv2.resize(rgb_arr/255., dsize=(20*rgb_arr.shape[1], 20*rgb_arr.shape[0]), interpolation=cv2.INTER_NEAREST)
         return res
         # plt.imshow(rgb_arr, interpolation='nearest')
         # if filename is None:

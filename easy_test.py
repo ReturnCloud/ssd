@@ -122,5 +122,4 @@ class Sarsa(object):
 
 from envs.cleanup import CleanupEnv
 env = CleanupEnv(num_agents=4)
-a = np.array([env.reset()])
-print (a.shape)
+print (env.base_map)

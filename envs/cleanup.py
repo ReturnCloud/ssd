@@ -11,9 +11,9 @@ ACTIONS['CLEAN'] = 5  # length of cleanup beam
 
 # Custom colour dictionary
 CLEANUP_COLORS = {'C': [100, 255, 255],  # Cyan cleaning beam
-                  'S': [113, 75, 24],  # Light grey-blue stream cell
-                  'H': [99, 156, 194],  # brown waste cells
-                  'R': [113, 75, 24]}  # Light grey-blue river cell
+                  'S': [99, 156, 194],  # Light grey-blue stream cell
+                  'H': [113, 75, 24],  # brown waste cells
+                  'R': [99, 156, 194]}  # Light grey-blue river cell
 
 SPAWN_PROB = [0, 0.005, 0.02, 0.05]
 
@@ -93,7 +93,7 @@ class CleanupEnv(MapEnv):
             agent.fire_beam('C')
             updates = self.update_map_fire(agent.get_pos().tolist(),
                                            agent.get_orientation(),
-                                           ACTIONS['FIRE'],
+                                           ACTIONS['CLEAN'],
                                            fire_char='C',
                                            cell_types=['H'],
                                            update_char=['R'],

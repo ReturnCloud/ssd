@@ -59,9 +59,6 @@ def main():
 
         actor_critic.append(ac)
     for episode in range(1):
-
-    # for episode in range(args.eval_episodes):
-        print("Episode %i of %i" % (episode, args.eval_episodes))
         state = env.reset()
         state = np.array([state])
 
@@ -95,7 +92,7 @@ def main():
             # print("step %i of %i" % (step, args.episode_length))
             # Sample actions
             img = env.render()
-            print (img.shape, img.mean())
+            # print (img.shape, img.mean())
             ax.cla()
             ax.imshow(img)
             ax.set_title('step ' + str(step))
@@ -125,7 +122,7 @@ def main():
                 rewards[i] += reward[i]
             state = np.array([state])
             rewards[-1] = sum(rewards[:-1])
-
+            print (f'reward {reward}, spawn: {env.current_apple_spawn_prob, env.current_waste_spawn_prob}')
             for i in range(args.num_agents):
                 if len(env.observation_space[0].shape) == 1:
                     share_obs[i].copy_(torch.tensor(state.reshape(1, -1),dtype=torch.float32))
