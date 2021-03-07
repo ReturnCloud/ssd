@@ -68,12 +68,7 @@ def main():
     else:
         attr += 'none'
 
-    log_dir = f'{attr}/log'
-    ckpt_dir = f'{attr}/model'
-    reset_dir(log_dir)
-    mk_dir(ckpt_dir)
-    logger = SummaryWriter(log_dir)
-    # logger = None
+    logger = None
     envs = make_parallel_env(args)
     actor_critic = []
     if args.share_policy:
@@ -258,13 +253,6 @@ def main():
             dist_entropies[f'agent_{i}'] = dist_entropy
         for k in range(args.num_agents):
             rwds['all'] += rwds[f'agent_{k}']
-        logger.add_scalars('value_loss', value_losses, episode)
-        logger.add_scalars('action_loss', action_losses, episode)
-        logger.add_scalars('dist_entropy', dist_entropies, episode)
-        logger.add_scalars('rwd', rwds, episode)
-        logger.add_scalars('fire', action_fire, episode)
-        logger.add_scalars('clean', action_clean, episode)
-        logger.add_scalars('spawn', spawn_info, episode)
 
         # ----------------- clean the buffer and reset ------------------
         obs = envs.reset()
@@ -279,11 +267,6 @@ def main():
             rollouts[i].masks[0].copy_(torch.ones(args.n_rollout_threads, 1))
             rollouts[i].bad_masks[0].copy_(torch.ones(args.n_rollout_threads, 1))
             rollouts[i].to(device)
-        if (episode % args.save_interval == 0 or episode == episodes - 1):
-            print (f'save the model of episode {episode}, {rwds}, env {spawn_info}')
-            for i in range(args.num_agents):
-                torch.save(actor_critic[i].state_dict(), f'{ckpt_dir}/agent_{i}.pth')
-
 
 if __name__ == '__main__':
     main()

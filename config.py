@@ -8,8 +8,8 @@ def get_config():
     parser.add_argument("--cuda", type=int, default=0)
     parser.add_argument("--cuda_deterministic", action='store_false', default=True)
     parser.add_argument("--n_training_threads", type=int, default=1)
-    parser.add_argument("--n_rollout_threads", type=int, default=8) # 64
-    parser.add_argument("--num_env_steps", type=int, default=10e8, help='number of environment steps to train (default: 10e6)')
+    parser.add_argument("--n_rollout_threads", type=int, default=32) # 64
+    parser.add_argument("--num_env_steps", type=int, default=7e7, help='number of environment steps to train (default: 10e6)')
 
     # rnn
     parser.add_argument("--naive_recurrent_policy", action='store_true', default=False, help='use a naive recurrent policy')
@@ -26,13 +26,13 @@ def get_config():
     parser.add_argument("--hidden_size", type=int, default=64)
 
     # ppo
-    parser.add_argument("--ppo_epoch", type=int, default=10, help='number of ppo epochs (default: 4)')
+    parser.add_argument("--ppo_epoch", type=int, default=4, help='number of ppo epochs (default: 4)')
     parser.add_argument("--use_clipped_value_loss", action='store_false', default=True)
     parser.add_argument("--clip_param", type=float, default=0.2, help='ppo clip parameter (default: 0.2)')
     parser.add_argument("--num_mini_batch", type=int, default=1, help='number of batches for ppo (default: 32)')
     parser.add_argument("--entropy_coef", type=float, default=0.01, help='entropy term coefficient (default: 0.01)')
     parser.add_argument("--value_loss_coef", type=float, default=1, help='value loss coefficient (default: 0.5)')
-    parser.add_argument("--lr", type=float, default=1e-3, help='learning rate (default: 7e-4)')
+    parser.add_argument("--lr", type=float, default=2e-3, help='learning rate (default: 7e-4)')
     parser.add_argument("--eps", type=float, default=1e-5, help='RMSprop optimizer epsilon (default: 1e-5)')
     parser.add_argument("--max_grad_norm", type=float, default=0.5, help='max norm of gradients (default: 0.5)')
     parser.add_argument("--use_gae", action='store_false', default=True, help='use generalized advantage estimation')

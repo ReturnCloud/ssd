@@ -1,7 +1,7 @@
 import numpy as np
 import torch
-import multiprocessing
-from multiprocessing import Process, Pipe
+import torch.multiprocessing as multiprocessing
+from torch.multiprocessing import Process, Pipe
 from abc import ABC, abstractmethod
 
 class CloudpickleWrapper(object):
@@ -160,6 +160,7 @@ class SubprocVecEnv(VecEnv):
         self.waiting = False
         self.closed = False
         nenvs = len(env_fns)
+        '''
         if start_method is None:
             # Fork is not a thread safe method (see issue #217)
             # but is more user friendly (does not require to wrap the code in
@@ -188,7 +189,7 @@ class SubprocVecEnv(VecEnv):
             p.start()
         for remote in self.work_remotes:
             remote.close()
-        '''
+
         self.remotes[0].send(('get_spaces', None))
         observation_space, action_space = self.remotes[0].recv()
         VecEnv.__init__(self, len(env_fns), observation_space, action_space)

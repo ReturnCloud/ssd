@@ -195,9 +195,14 @@ class MapEnv(gym.Env):
             observations.append(rgb_arr)
             rewards.append(agent.compute_reward())
             dones.append(agent.get_done())
+            try:
+                info['apple'] = self.current_apple_spawn_prob
+                info['waste'] = self.current_waste_spawn_prob
+            except:
+                a = 1
         dones.append(np.any(dones))
         # print (np.array(observations).shape, np.array(rewards).shape, np.array(dones).shape)
-        return np.array(observations), np.array(rewards), np.array(dones), np.array(info)
+        return np.array(observations), np.array(rewards), np.array(dones), info
 
         # return observations, rewards, dones, info
 
