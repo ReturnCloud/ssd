@@ -95,6 +95,11 @@ def main():
                       base_kwargs={'naive_recurrent': args.naive_recurrent_policy,
                                    'recurrent': args.recurrent_policy,
                                    'hidden_size': args.hidden_size})
+            if args.load:
+                ckpt = torch.load(f'./experiments/cleanup_{args.n_rollout_threads}/{args.num_agents}_none/model/agent_{agent_id}.pth')
+                ac.load_state_dict(ckpt)
+                print ('load previous model')
+
             ac.to(device)
             actor_critic.append(ac)
     # gpu_memory_log()
@@ -185,7 +190,7 @@ def main():
             for i in range(args.n_rollout_threads):
                 action_env = []
                 for k in range(args.num_agents):
-                    action_env.append(actions[k][i])
+                    action_env.append(int(actions[k][i]))
                     if actions[k][i] == 7:
                         action_fire[f'agent_{k}'] += 1 / (args.episode_length*args.n_rollout_threads)
                     if actions[k][i] == 8:

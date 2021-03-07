@@ -180,7 +180,7 @@ def main():
             for i in range(args.n_rollout_threads):
                 action_env = []
                 for k in range(args.num_agents):
-                    action_env.append(actions[k][i])
+                    action_env.append(int( actions[k][i])) # actions[k][i].detach()
                     if actions[k][i] == 7:
                         action_fire[f'agent_{k}'] += 1 / (args.episode_length*args.n_rollout_threads)
                     if actions[k][i] == 8:
@@ -267,6 +267,6 @@ def main():
             rollouts[i].masks[0].copy_(torch.ones(args.n_rollout_threads, 1))
             rollouts[i].bad_masks[0].copy_(torch.ones(args.n_rollout_threads, 1))
             rollouts[i].to(device)
-
+        print (episode)
 if __name__ == '__main__':
     main()

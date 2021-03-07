@@ -199,7 +199,7 @@ def main():
             for i in range(args.n_rollout_threads):
                 action_env = []
                 for k in range(args.num_agents):
-                    action_env.append(actions[k][i])
+                    action_env.append(0)
                 actions_env.append(action_env)
 
             # Obser reward and next obs
