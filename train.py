@@ -4,7 +4,7 @@ import os
 import time
 import numpy as np
 from pathlib import Path
-
+import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -19,6 +19,27 @@ from envs.vec_env import SubprocVecEnv #, DummyVecEnv
 from algo.algo_utils import update_linear_schedule
 from utils import *
 from gpu_memory_log import *
+from algo.popart import PopArt
+
+def set_logger(args, cur_time):
+    logger_name = f'{args.env_name}'
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(logging.DEBUG)
+
+    path = os.path.join(args.log_dir, 'log.txt')
+    fh = logging.FileHandler(path)
+    fh.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    logger.addHandler(ch)
+    logger.addHandler(fh)
+
+    logger.info('-'*30)
+    logger.info(cur_time)
+    args_dict = args.__dict__
+    for k in args_dict.keys():
+        logger.info(f'Argument {k}: {args_dict[k]}')
+    logger.info('-'*30)
 
 def make_parallel_env(args):
     def get_env_fn(rank):
@@ -58,7 +79,8 @@ def main():
         torch.set_num_threads(args.n_training_threads)
 
     # ----------------- prepare for env, network, algo, buffer, logger ------------------
-    attr = f'./experiments/{args.env_name}_{args.n_rollout_threads}/{args.num_agents}_'
+    cur_time = time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime())
+    attr = f'./experiments/{cur_time}/{args.env_name}_{args.n_rollout_threads}/{args.num_agents}_'
     if args.lstm:
         attr += 'lstm'
     elif args.recurrent_policy:
@@ -68,13 +90,16 @@ def main():
     else:
         attr += 'none'
 
-    log_dir = f'{attr}/log'
-    ckpt_dir = f'{attr}/model'
-    reset_dir(log_dir)
-    mk_dir(ckpt_dir)
-    logger = SummaryWriter(log_dir)
+
+    args.log_dir = f'{attr}/log'
+    args.ckpt_dir = f'{attr}/model'
+    reset_dir(args.log_dir)
+    mk_dir(args.ckpt_dir)
+    logger = SummaryWriter(args.log_dir)
+    set_logger(args, cur_time)
     # logger = None
     envs = make_parallel_env(args)
+    popart = PopArt(1, device=device) if args.popart else None
     actor_critic = []
     if args.share_policy:
         ac = Policy(envs.observation_space[0],
@@ -114,10 +139,13 @@ def main():
                    args.data_chunk_length,
                    args.value_loss_coef,
                    args.entropy_coef,
+                   huber_delta=args.huber_delta,
+                   popart=popart,
                    lr=args.lr,
                    eps=args.eps,
                    max_grad_norm=args.max_grad_norm,
-                   use_clipped_value_loss=args.use_clipped_value_loss)
+                   use_clipped_value_loss=args.use_clipped_value_loss,
+                   use_huber_loss=args.use_huber_loss)
         ro = RolloutStorage(args.num_agents,
                             agent_id,
                             args.episode_length,
@@ -252,7 +280,8 @@ def main():
                                         args.use_gae,
                                         args.gamma,
                                         args.gae_lambda,
-                                        args.use_proper_time_limits)
+                                        args.use_proper_time_limits,
+                                        popart=popart)
 
          # ----------------- update and log ------------------
         value_losses, action_losses, dist_entropies, rwds = {}, {}, {}, {'all': 0}
@@ -289,7 +318,7 @@ def main():
         if (episode % args.save_interval == 0 or episode == episodes - 1):
             print (f'save the model of episode {episode}, {rwds}, env {spawn_info}')
             for i in range(args.num_agents):
-                torch.save(actor_critic[i].state_dict(), f'{ckpt_dir}/agent_{i}.pth')
+                torch.save(actor_critic[i].state_dict(), f'{args.ckpt_dir}/agent_{i}.pth')
 
 
 if __name__ == '__main__':

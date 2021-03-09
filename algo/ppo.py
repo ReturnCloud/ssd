@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
-
+from algo.algo_utils import *
 # no logger input
 
 class PPO():
@@ -16,16 +16,20 @@ class PPO():
                  data_chunk_length,
                  value_loss_coef,
                  entropy_coef,
+                 huber_delta=0,
+                 popart = None,
                  logger = None,
                  lr=None,
                  eps=None,
                  max_grad_norm=None,
+                 use_huber_loss=False,
                  use_clipped_value_loss=True):
 
         self.agent_id = agent_id
         self.step = 0
         self.logger = logger
         self.actor_critic = actor_critic
+        self.popart = popart
 
         self.clip_param = clip_param
         self.ppo_epoch = ppo_epoch
@@ -34,16 +38,20 @@ class PPO():
 
         self.value_loss_coef = value_loss_coef
         self.entropy_coef = entropy_coef
+        self.huber_delta = huber_delta
 
         self.max_grad_norm = max_grad_norm
         self.use_clipped_value_loss = use_clipped_value_loss
+        self.use_huber_loss = use_huber_loss
 
         self.optimizer = optim.Adam(actor_critic.parameters(), lr=lr, eps=eps)
 
     def update(self, rollouts, turn_on=True):
-        advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
-        advantages = (advantages - advantages.mean()) / (
-            advantages.std() + 1e-5)
+        if self.popart:
+            advantages = rollouts.returns[:-1] - self.popart.denormalize(rollouts.value_preds[:-1])
+        else:
+            advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)
 
         value_loss_epoch = 0
         action_loss_epoch = 0
@@ -79,13 +87,26 @@ class PPO():
                                     1.0 + self.clip_param) * adv_targ
                 action_loss = -torch.min(surr1, surr2).mean()
 
-                if self.use_clipped_value_loss:
+                if self.popart:
                     value_pred_clipped = value_preds_batch + (values - value_preds_batch).clamp(-self.clip_param, self.clip_param)
-                    value_losses = (values - return_batch).pow(2)
-                    value_losses_clipped = (value_pred_clipped - return_batch).pow(2)
-                    value_loss = 0.5 * torch.max(value_losses, value_losses_clipped).mean()
+                    error_clipped = self.popart(return_batch) - value_pred_clipped
+                    error_original = self.popart(return_batch) - values
                 else:
-                    value_loss = 0.5 * (return_batch - values).pow(2).mean()
+                    value_pred_clipped = value_preds_batch + (values - value_preds_batch).clamp(-self.clip_param, self.clip_param)
+                    error_clipped = return_batch - value_pred_clipped
+                    error_original = return_batch - values
+
+                if self.use_huber_loss:
+                    value_loss_clipped = huber_loss(error_clipped, self.huber_delta)
+                    value_loss_original = huber_loss(error_original, self.huber_delta)
+                else:
+                    value_loss_clipped = mse_loss(error_clipped)
+                    value_loss_original = mse_loss(error_original)
+
+                if self.use_clipped_value_loss:
+                    value_loss = torch.max(value_loss_original, value_loss_clipped).mean()
+                else:
+                    value_loss = value_loss_original.mean()
 
                 self.optimizer.zero_grad()
 

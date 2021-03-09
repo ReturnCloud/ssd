@@ -41,6 +41,12 @@ def make_parallel_env(args):
 def main():
     args = get_config()
     args.n_rollout_threads = 32
+    print (type(args))
+    print (args.__dict__)
+    a = args.__dict__
+    for i in a:
+        print (i, a[i])
+    '''
     # seed
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
@@ -206,13 +212,13 @@ def main():
             obs, reward, done, infos = envs.step(actions_env)
 
             # If done then clean the history of observations.
-            '''
-            masks = torch.FloatTensor(
-                [[0.0] if done_ else [1.0] for done_ in done])
-            bad_masks = torch.FloatTensor(
-                [[0.0] if 'bad_transition' in info.keys() else [1.0]
-                 for info in infos])
-            '''
+
+            # masks = torch.FloatTensor(
+            #     [[0.0] if done_ else [1.0] for done_ in done])
+            # bad_masks = torch.FloatTensor(
+            #     [[0.0] if 'bad_transition' in info.keys() else [1.0]
+            #      for info in infos])
+
             # insert data in buffer
             masks = []
             bad_masks = []
@@ -404,5 +410,6 @@ def main():
                         int(total_num_steps / (end - start))))
             for i in range(args.num_agents):
                 print("value loss of agent%i: " %i + str(value_losses[i]))
+    '''
 if __name__ == "__main__":
     main()#!/usr/bin/env python

@@ -54,5 +54,11 @@ def get_config():
     parser.add_argument("--log_interval", type=int, default=1)
     parser.add_argument("--eval_episodes", type=int, default=10)
 
+    # new
+    parser.add_argument("--popart", type=int, default=1)
+    parser.add_argument("--use_huber_loss", action='store_true', default=False)
+    parser.add_argument("--huber_delta", type=float, default=10.0)
+
+
     args = parser.parse_args()
     return args
