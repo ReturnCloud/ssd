@@ -96,7 +96,7 @@ def main():
                                    'recurrent': args.recurrent_policy,
                                    'hidden_size': args.hidden_size})
             if args.load:
-                ckpt = torch.load(f'./experiments/cleanup_{args.n_rollout_threads}/{args.num_agents}_none/model/agent_{agent_id}.pth')
+                ckpt = torch.load(f'./experiments/{args.env_name}_{args.n_rollout_threads}/{args.num_agents}_none/model/agent_{agent_id}.pth')
                 ac.load_state_dict(ckpt)
                 print ('load previous model')
 
@@ -201,9 +201,10 @@ def main():
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(actions_env)
             cur_share_obs = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
-            for i in range(args.n_rollout_threads):
-                for k in spawn_info.keys():
-                    spawn_info[k] += infos[i][k] / (args.n_rollout_threads*args.episode_length)
+            if args.env_name == 'cleanup':
+                for i in range(args.n_rollout_threads):
+                    for k in spawn_info.keys():
+                        spawn_info[k] += infos[i][k] / (args.n_rollout_threads*args.episode_length)
             # insert data in buffer, if done then clean the history of observations.
             masks, bad_masks = [], []
             for i in range(args.num_agents):
@@ -268,8 +269,9 @@ def main():
         logger.add_scalars('dist_entropy', dist_entropies, episode)
         logger.add_scalars('rwd', rwds, episode)
         logger.add_scalars('fire', action_fire, episode)
-        logger.add_scalars('clean', action_clean, episode)
-        logger.add_scalars('spawn', spawn_info, episode)
+        if args.env_name == 'cleanup':
+            logger.add_scalars('clean', action_clean, episode)
+            logger.add_scalars('spawn', spawn_info, episode)
 
         # ----------------- clean the buffer and reset ------------------
         obs = envs.reset()

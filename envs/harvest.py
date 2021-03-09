@@ -41,7 +41,7 @@ class HarvestEnv(MapEnv):
         map_with_agents = self.get_map_with_agents()
 
         for i in range(self.num_agents):
-            agent_id = 'agent-' + str(i)
+            agent_id = i
             spawn_point = self.spawn_point()
             rotation = self.spawn_rotation()
             grid = map_with_agents

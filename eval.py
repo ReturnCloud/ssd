@@ -23,6 +23,8 @@ import time
 
 def main():
     args = get_config()
+    args.n_rollout_threads = 256
+    args.num_agents = 2
 
     # cuda
     if args.cuda and torch.cuda.is_available():
@@ -38,7 +40,7 @@ def main():
     # env
     if args.env_name == "cleanup":
         env = CleanupEnv(num_agents=args.num_agents)
-    elif args.env_name == "haevest":
+    elif args.env_name == "harvest":
         env = HarvestEnv(num_agents=args.num_agents)
     else:
         print("Can not support the " + args.env_name + "environment." )
