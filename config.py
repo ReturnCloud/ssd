@@ -59,6 +59,6 @@ def get_config():
     parser.add_argument("--use_huber_loss", action='store_true', default=False)
     parser.add_argument("--huber_delta", type=float, default=10.0)
 
-
+    parser.add_argument("--concatenate", type=int, default=0)
     args = parser.parse_args()
     return args

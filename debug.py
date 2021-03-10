@@ -1,10 +1,9 @@
-import copy
 import glob
 import os
 import time
 import numpy as np
 from pathlib import Path
-
+import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -19,18 +18,51 @@ from envs.vec_env import SubprocVecEnv #, DummyVecEnv
 from algo.algo_utils import update_linear_schedule
 from utils import *
 from gpu_memory_log import *
+from algo.popart import PopArt
+import gym
+import random
+
+def set_logger(args, cur_time):
+    logger_name = f'{args.env_name}'
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(logging.DEBUG)
+
+    path = os.path.join(args.log_dir, 'log.txt')
+    fh = logging.FileHandler(path)
+    fh.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    logger.addHandler(ch)
+    logger.addHandler(fh)
+
+    logger.info('-'*30)
+    logger.info(cur_time)
+    args_dict = args.__dict__
+    for k in args_dict.keys():
+        logger.info(f'Argument {k}: {args_dict[k]}')
+    logger.info('-'*30)
 
 def make_parallel_env(args):
     def get_env_fn(rank):
         def init_env():
             if args.env_name == "cleanup":
-                env = CleanupEnv(num_agents=args.num_agents)
+                env = 'cleanup-v0'
+                try:
+                    gym.register(env, entry_point=CleanupEnv, kwargs={'num_agents':args.num_agents})
+                except:
+                    raise Exception('environment registered')
+                env = gym.make(env)
             elif args.env_name == "harvest":
-                env = HarvestEnv(num_agents=args.num_agents)
+                env = 'harvest-v0'
+                try:
+                    gym.register(env, entry_point=HarvestEnv, kwargs={'num_agents':args.num_agents})
+                except:
+                    raise Exception('environment registered')
+                env = gym.make(env)
             else:
                 print("Can not support the " + args.env_name + "environment." )
                 raise NotImplementedError
-            env.seed(args.seed + rank * 1000)
+            env.seed(args.seed)
             return env
         return init_env
     if args.n_rollout_threads == 1:
@@ -40,11 +72,16 @@ def make_parallel_env(args):
 
 def main():
     args = get_config()
+    args.concantate = 1
+    args.popart = 0
+    args.n_rollout_threads = 256
+
 
     # ----------------- seed ------------------
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
     np.random.seed(args.seed)
+    random.seed(args.seed)
 
     # cuda
     if args.cuda>=0 and torch.cuda.is_available():
@@ -57,19 +94,11 @@ def main():
         device = torch.device("cpu")
         torch.set_num_threads(args.n_training_threads)
 
-    # ----------------- prepare for env, network, algo, buffer, logger ------------------
-    attr = f'./experiments/{args.env_name}_{args.n_rollout_threads}/{args.num_agents}_'
-    if args.lstm:
-        attr += 'lstm'
-    elif args.recurrent_policy:
-        attr += 'recurrent'
-    elif args.naive_recurrent_policy:
-        attr += 'naive_recurrent'
-    else:
-        attr += 'none'
+
 
     logger = None
     envs = make_parallel_env(args)
+    popart = PopArt(1, device=device) if args.popart else None
     actor_critic = []
     if args.share_policy:
         ac = Policy(envs.observation_space[0],
@@ -90,6 +119,11 @@ def main():
                       base_kwargs={'naive_recurrent': args.naive_recurrent_policy,
                                    'recurrent': args.recurrent_policy,
                                    'hidden_size': args.hidden_size})
+            if args.load:
+                ckpt = torch.load(f'./experiments/{args.env_name}_{args.n_rollout_threads}/{args.num_agents}_none/model/agent_{agent_id}.pth')
+                ac.load_state_dict(ckpt)
+                print ('load previous model')
+
             ac.to(device)
             actor_critic.append(ac)
     # gpu_memory_log()
@@ -104,10 +138,13 @@ def main():
                    args.data_chunk_length,
                    args.value_loss_coef,
                    args.entropy_coef,
+                   huber_delta=args.huber_delta,
+                   popart=popart,
                    lr=args.lr,
                    eps=args.eps,
                    max_grad_norm=args.max_grad_norm,
-                   use_clipped_value_loss=args.use_clipped_value_loss)
+                   use_clipped_value_loss=args.use_clipped_value_loss,
+                   use_huber_loss=args.use_huber_loss)
         ro = RolloutStorage(args.num_agents,
                             agent_id,
                             args.episode_length,
@@ -120,7 +157,18 @@ def main():
 
     # ----------------- reset env ------------------
     obs = envs.reset() # (n_thread, n_agent, c, h, w)
-    cur_share_obs = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
+    if not os.path.exists('obs.npy'):
+        print ('reset')
+        obs = envs.reset()
+        np.save('obs.npy', obs)
+    else:
+        obs = np.load('obs.npy')
+
+    print (obs.mean(), obs.std())
+    if args.concatenate:
+        cur_share_obs = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
+    else:
+        cur_share_obs = obs.reshape(args.n_rollout_threads, -1, envs.observation_space[0].shape[1], envs.observation_space[0].shape[2])
     for i in range(args.num_agents):
         rollouts[i].share_obs[0].copy_(torch.tensor(cur_share_obs))
         rollouts[i].obs[0].copy_(torch.tensor(obs[:,i,:,:,:]))
@@ -136,7 +184,7 @@ def main():
     # episodes=1
     all_episode = 0
 
-    for episode in range(episodes):
+    for episode in range(1):
         action_fire, action_clean = {f'agent_{i}': 0 for i in range(args.num_agents)}, {f'agent_{i}': 0 for i in range(args.num_agents)}
         spawn_info = {'apple':0, 'waste':0}
         if args.use_linear_lr_decay:
@@ -144,7 +192,7 @@ def main():
             for i in range(args.num_agents):
                 update_linear_schedule(agents[i].optimizer, episode, episodes, args.lr)
 
-        for step in range(args.episode_length):
+        for step in range(10):
             # Sample actions
             values = []
             actions= []
@@ -174,13 +222,17 @@ def main():
                     recurrent_hidden_statess_critic.append(recurrent_hidden_states_critic)
                     recurrent_c_statess.append(recurrent_c_states)
                     recurrent_c_statess_critic.append(recurrent_c_states_critic)
+            print (type(value), type(action))
+            v = np.array(values)
+            a = np.array(actions)
+            print (episode, step, value.mean(), value.std(), action.float().mean(), action.float().std())
 
             # rearrange action
             actions_env = []
             for i in range(args.n_rollout_threads):
                 action_env = []
                 for k in range(args.num_agents):
-                    action_env.append(int( actions[k][i])) # actions[k][i].detach()
+                    action_env.append(int(actions[k][i]))
                     if actions[k][i] == 7:
                         action_fire[f'agent_{k}'] += 1 / (args.episode_length*args.n_rollout_threads)
                     if actions[k][i] == 8:
@@ -190,10 +242,15 @@ def main():
             # gpu_memory_log()
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(actions_env)
-            cur_share_obs = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
-            for i in range(args.n_rollout_threads):
-                for k in spawn_info.keys():
-                    spawn_info[k] += infos[i][k] / (args.n_rollout_threads*args.episode_length)
+            print (episode, step, obs.mean(), obs.std())
+            if args.concatenate:
+                cur_share_obs = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
+            else:
+                cur_share_obs = obs.reshape(args.n_rollout_threads, -1, envs.observation_space[0].shape[1], envs.observation_space[0].shape[2])
+            if args.env_name == 'cleanup':
+                for i in range(args.n_rollout_threads):
+                    for k in spawn_info.keys():
+                        spawn_info[k] += infos[i][k] / (args.n_rollout_threads*args.episode_length)
             # insert data in buffer, if done then clean the history of observations.
             masks, bad_masks = [], []
             for i in range(args.num_agents):
@@ -241,7 +298,8 @@ def main():
                                         args.use_gae,
                                         args.gamma,
                                         args.gae_lambda,
-                                        args.use_proper_time_limits)
+                                        args.use_proper_time_limits,
+                                        popart=popart)
 
          # ----------------- update and log ------------------
         value_losses, action_losses, dist_entropies, rwds = {}, {}, {}, {'all': 0}
@@ -254,12 +312,17 @@ def main():
         for k in range(args.num_agents):
             rwds['all'] += rwds[f'agent_{k}']
 
+
         # ----------------- clean the buffer and reset ------------------
         obs = envs.reset()
-        cur_share_obs = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
+        print (episode, step, obs.mean(), obs.std())
+        if args.concatenate:
+            cur_share_obs = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
+        else:
+            cur_share_obs = obs.reshape(args.n_rollout_threads, -1, envs.observation_space[0].shape[1], envs.observation_space[0].shape[2])
         for i in range(args.num_agents):
             rollouts[i].share_obs[0].copy_(torch.tensor(cur_share_obs))
-            rollouts[i].obs[0].copy_(torch.tensor(obs[:,i,:]))
+            rollouts[i].obs[0].copy_(torch.tensor(obs[:,i,:,:,:]))
             rollouts[i].recurrent_hidden_states.zero_()
             rollouts[i].recurrent_hidden_states_critic.zero_()
             rollouts[i].recurrent_c_states.zero_()
@@ -267,6 +330,11 @@ def main():
             rollouts[i].masks[0].copy_(torch.ones(args.n_rollout_threads, 1))
             rollouts[i].bad_masks[0].copy_(torch.ones(args.n_rollout_threads, 1))
             rollouts[i].to(device)
-        print (episode)
+        if (episode % args.save_interval == 0 or episode == episodes - 1):
+            print (f'save the model of episode {episode}, {rwds}, env {spawn_info}')
+            # for i in range(args.num_agents):
+            #     torch.save(actor_critic[i].state_dict(), f'{args.ckpt_dir}/agent_{i}.pth')
+
+
 if __name__ == '__main__':
     main()

@@ -158,7 +158,10 @@ def main():
 
     # ----------------- reset env ------------------
     obs = envs.reset() # (n_thread, n_agent, c, h, w)
-    cur_share_obs = obs.reshape(args.n_rollout_threads, -1, envs.observation_space[0].shape[1], envs.observation_space[0].shape[2])
+    if args.concatenate:
+        cur_share_obs = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
+    else:
+        cur_share_obs = obs.reshape(args.n_rollout_threads, -1, envs.observation_space[0].shape[1], envs.observation_space[0].shape[2])
     for i in range(args.num_agents):
         rollouts[i].share_obs[0].copy_(torch.tensor(cur_share_obs))
         rollouts[i].obs[0].copy_(torch.tensor(obs[:,i,:,:,:]))
@@ -228,7 +231,10 @@ def main():
             # gpu_memory_log()
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(actions_env)
-            cur_share_obs = obs.reshape(args.n_rollout_threads, -1, envs.observation_space[0].shape[1], envs.observation_space[0].shape[2])
+            if args.concatenate:
+                cur_share_obs = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
+            else:
+                cur_share_obs = obs.reshape(args.n_rollout_threads, -1, envs.observation_space[0].shape[1], envs.observation_space[0].shape[2])
             if args.env_name == 'cleanup':
                 for i in range(args.n_rollout_threads):
                     for k in spawn_info.keys():
@@ -240,7 +246,7 @@ def main():
                 for done_ in done:
                     if done_[i]:
                         mask.append([0.0])
-                        # bad_mask.append([1.0])
+                        bad_mask.append([1.0])
                     else:
                         mask.append([1.0])
                         bad_mask.append([1.0])
@@ -304,7 +310,10 @@ def main():
 
         # ----------------- clean the buffer and reset ------------------
         obs = envs.reset()
-        cur_share_obs = obs.reshape(args.n_rollout_threads, -1, envs.observation_space[0].shape[1], envs.observation_space[0].shape[2])
+        if args.concatenate:
+            cur_share_obs = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
+        else:
+            cur_share_obs = obs.reshape(args.n_rollout_threads, -1, envs.observation_space[0].shape[1], envs.observation_space[0].shape[2])
         for i in range(args.num_agents):
             rollouts[i].share_obs[0].copy_(torch.tensor(cur_share_obs))
             rollouts[i].obs[0].copy_(torch.tensor(obs[:,i,:,:,:]))

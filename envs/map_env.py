@@ -403,6 +403,7 @@ class MapEnv(gym.Env):
 
         # cut short the computation if there are no moves
         if len(agent_to_slot) > 0:
+            # print ('random in step')
 
             # first we will resolve all slots over which multiple agents
             # want the slot
@@ -654,6 +655,7 @@ class MapEnv(gym.Env):
     def spawn_rotation(self):
         """Return a randomly selected initial rotation for an agent"""
         rand_int = np.random.randint(len(ORIENTATIONS.keys()))
+        # print ('rand_int', rand_int)
         return list(ORIENTATIONS.keys())[rand_int]
 
     def rotate_view(self, orientation, view):

@@ -40,12 +40,18 @@ def make_parallel_env(args):
 
 def main():
     args = get_config()
-    args.n_rollout_threads = 32
-    print (type(args))
-    print (args.__dict__)
-    a = args.__dict__
-    for i in a:
-        print (i, a[i])
+    envs = make_parallel_env(args)
+    obs = envs.reset()
+    a = np.concatenate([obs[:,i,:,:,:] for i in range(args.num_agents)], axis=1)
+    b = obs.reshape(args.n_rollout_threads, -1, envs.observation_space[0].shape[1], envs.observation_space[0].shape[2])
+    print (a.shape)
+    print (b.shape)
+    for i in range(32):
+        for j in range(6):
+            for m in range(15):
+                for n in range(15):
+                    if a[i][j][m][n] != b[i][j][m][n]:
+                        print ('no')
     '''
     # seed
     torch.manual_seed(args.seed)
